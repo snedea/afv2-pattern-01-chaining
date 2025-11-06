@@ -34,7 +34,7 @@ Start → Chain1 → HIL Gate → Chain2 → Chain3 → Report → Direct Reply
 
 ## Documentation
 
-See [Context Foundry Pattern Library](https://github.com/context-foundry/context-foundry/tree/main/extensions/flowise/templates/afv2-patterns) for complete documentation.
+See [Context Foundry Pattern Library](https://github.com/snedea/afv2-patterns-index) for complete documentation.
 
 🤖 Built with Context Foundry
 
