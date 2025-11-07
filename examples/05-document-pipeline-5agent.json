@@ -1,0 +1,398 @@
+{
+  "nodes": [
+    {
+      "id": "startAgentflow_0",
+      "type": "agentFlow",
+      "position": { "x": -600, "y": 200 },
+      "data": {
+        "id": "startAgentflow_0",
+        "label": "Start",
+        "version": 1.1,
+        "name": "startAgentflow",
+        "type": "Start",
+        "color": "#7EE787",
+        "hideInput": true,
+        "baseClasses": ["Start"],
+        "category": "Agent Flows",
+        "inputParams": [
+          {
+            "label": "Input Type",
+            "name": "startInputType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Chat Input",
+                "name": "chatInput",
+                "description": "Start with invoice document upload"
+              }
+            ],
+            "default": "chatInput"
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": { "startInputType": "chatInput" },
+        "outputAnchors": [
+          {
+            "id": "startAgentflow_0-output-startAgentflow",
+            "label": "Start",
+            "name": "startAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "stickyNote_purpose",
+      "type": "stickyNote",
+      "position": { "x": -600, "y": 50 },
+      "data": {
+        "id": "stickyNote_purpose",
+        "label": "Sticky Note",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": ["StickyNote"],
+        "category": "Agent Flows",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "5-AGENT DOCUMENT PIPELINE\nUse Case: Invoice processing with approval\nFlow: Extract → Validate → Enrich → HIL → Process → Report\nDemonstrates extended chain with data enrichment stages."
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNote_purpose-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 300,
+      "height": 122
+    },
+    {
+      "id": "agent_extract",
+      "type": "agentFlow",
+      "position": { "x": -200, "y": 200 },
+      "data": {
+        "id": "agent_extract",
+        "label": "Agent.Extract",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Extract",
+          "agentDescription": "OCR and data extraction specialist",
+          "agentSystemPrompt": "You are an OCR and data extraction specialist for invoice processing.\n\nTASK: Extract structured data from the invoice.\n\nExtract:\n- Invoice number\n- Vendor name\n- Total amount\n- Line items (description, quantity, unit price)\n- Date\n- Payment terms\n\nOUTPUT FORMAT (JSON):\n{\n  \"invoice_number\": \"string\",\n  \"vendor\": \"string\",\n  \"total\": number,\n  \"line_items\": [{\"description\": \"string\", \"qty\": number, \"unit_price\": number}],\n  \"date\": \"YYYY-MM-DD\",\n  \"payment_terms\": \"string\"\n}\n\nStore in Flow State as: extracted_invoice",
+          "agentModel": "claude-sonnet-4-5-20250929",
+          "agentTemperature": 0.2,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "artifacts.extracted_invoice", "value": "{{ extracted_invoice }}" },
+            { "key": "chain.step", "value": "1" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_extract-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "agent_validate",
+      "type": "agentFlow",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "id": "agent_validate",
+        "label": "Agent.Validate",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Validate",
+          "agentDescription": "Invoice validation specialist",
+          "agentSystemPrompt": "You are an invoice validation specialist.\n\nTASK: Validate the extracted invoice data.\n\nExtracted Data: {{ artifacts.extracted_invoice }}\n\nPerform checks:\n1. All required fields present (invoice number, vendor, amount, date)\n2. Amount is reasonable (< $10,000 = low risk)\n3. Date is valid (not future dated)\n4. Vendor name format is valid\n\nOUTPUT FORMAT (JSON):\n{\n  \"all_fields_present\": boolean,\n  \"amount_reasonable\": boolean,\n  \"date_valid\": boolean,\n  \"validation_passed\": boolean,\n  \"issues\": [\"array of issues if any\"]\n}\n\nStore in Flow State as: validation_result",
+          "agentModel": "claude-sonnet-4-5-20250929",
+          "agentTemperature": 0.1,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "artifacts.validation_result", "value": "{{ validation_result }}" },
+            { "key": "chain.step", "value": "2" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_validate-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "agent_enrich",
+      "type": "agentFlow",
+      "position": { "x": 400, "y": 200 },
+      "data": {
+        "id": "agent_enrich",
+        "label": "Agent.Enrich",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Enrich",
+          "agentDescription": "Data enrichment specialist",
+          "agentSystemPrompt": "You are a data enrichment specialist.\n\nTASK: Enrich invoice data with additional context.\n\nExtracted: {{ artifacts.extracted_invoice }}\nValidation: {{ artifacts.validation_result }}\n\nAdd context:\n- Vendor history (simulate: new vendor if no prior invoices)\n- Payment history (simulate based on vendor name)\n- Risk score (1-10 based on amount, vendor status, validation)\n- Department budget impact (simulate $50K budget)\n\nOUTPUT FORMAT (JSON):\n{\n  \"vendor_status\": \"new\" | \"existing\",\n  \"vendor_history\": {\n    \"total_invoices\": number,\n    \"avg_amount\": number | null\n  },\n  \"risk_score\": number (1-10),\n  \"budget_remaining\": number,\n  \"approval_required\": boolean\n}\n\nStore in Flow State as: enriched_data",
+          "agentModel": "claude-sonnet-4-5-20250929",
+          "agentTemperature": 0.2,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "artifacts.enriched_data", "value": "{{ enriched_data }}" },
+            { "key": "artifacts.risk_score", "value": "{{ risk_score }}" },
+            { "key": "chain.step", "value": "3" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_enrich-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "humanInput_approval",
+      "type": "agentFlow",
+      "position": { "x": 700, "y": 200 },
+      "data": {
+        "id": "humanInput_approval",
+        "label": "HIL: Payment Approval",
+        "version": 1.1,
+        "name": "humanInputAgentflow",
+        "type": "HumanInput",
+        "color": "#FF6B6B",
+        "baseClasses": ["HumanInput"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "humanInputDescriptionType": "fixed",
+          "humanInputDescription": "💰 Invoice Payment Approval Required\n\nInvoice: {{ artifacts.extracted_invoice.invoice_number }}\nVendor: {{ artifacts.extracted_invoice.vendor }}\nAmount: ${{ artifacts.extracted_invoice.total }}\n\nValidation: {{ artifacts.validation_result.validation_passed }}\nRisk Score: {{ artifacts.risk_score }}/10\nVendor Status: {{ artifacts.enriched_data.vendor_status }}\n\nPlease approve payment processing.",
+          "humanInputEnableFeedback": true
+        },
+        "outputAnchors": [
+          {
+            "id": "humanInput_approval-output-humanInputAgentflow",
+            "label": "HumanInput",
+            "name": "humanInputAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "agent_process",
+      "type": "agentFlow",
+      "position": { "x": 1000, "y": 200 },
+      "data": {
+        "id": "agent_process",
+        "label": "Agent.Process",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Process",
+          "agentDescription": "Payment processing specialist",
+          "agentSystemPrompt": "You are a payment processing specialist.\n\nTASK: Process the approved invoice payment.\n\nInvoice: {{ artifacts.extracted_invoice }}\nApproval: Received\n\nSimulate these actions:\n1. Update ERP system (record invoice)\n2. Schedule ACH payment (15 days from today)\n3. Send confirmation email to vendor\n4. Generate payment receipt\n5. Create audit log entry\n\nOUTPUT: Confirmation message with:\n- Payment scheduled date\n- Confirmation number\n- Email sent status\n- Audit trail ID\n\nStore in Flow State as: payment_result",
+          "agentModel": "claude-3-haiku-20240307",
+          "agentTemperature": 0.1,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "artifacts.payment_result", "value": "{{ payment_result }}" },
+            { "key": "chain.step", "value": "4" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_process-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "agent_report",
+      "type": "agentFlow",
+      "position": { "x": 1300, "y": 200 },
+      "data": {
+        "id": "agent_report",
+        "label": "Agent.Report",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#66BB6A",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Report",
+          "agentDescription": "Invoice processing report generator",
+          "agentSystemPrompt": "Generate invoice processing report.\n\nData Available:\n- Extracted: {{ artifacts.extracted_invoice }}\n- Validation: {{ artifacts.validation_result }}\n- Enrichment: {{ artifacts.enriched_data }}\n- Payment: {{ artifacts.payment_result }}\n\nCreate structured report with:\n- Invoice summary\n- Processing timeline (each stage timestamp)\n- Risk assessment summary\n- Payment confirmation\n- Audit trail reference\n\nStore as: report.generated=true, report.timestamp",
+          "agentModel": "claude-3-haiku-20240307",
+          "agentTemperature": 0.1,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "report.generated", "value": "true" },
+            { "key": "report.timestamp", "value": "{{ currentDateTime }}" },
+            { "key": "chain.step", "value": "5" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_report-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "directReply_final",
+      "type": "agentFlow",
+      "position": { "x": 1600, "y": 200 },
+      "data": {
+        "id": "directReply_final",
+        "label": "Direct Reply",
+        "version": 1,
+        "name": "directReplyAgentflow",
+        "type": "DirectReply",
+        "color": "#FFD700",
+        "baseClasses": ["DirectReply"],
+        "category": "Agent Flows",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "directReplyMessage": "✅ Invoice Processed Successfully\n\n5-stage pipeline complete:\n• Extract → Validate → Enrich → Approve → Process\n\nProcessing report generated with complete audit trail.",
+          "hideOutput": true
+        },
+        "outputAnchors": [],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    }
+  ],
+  "edges": [
+    {
+      "source": "startAgentflow_0",
+      "sourceHandle": "startAgentflow_0-output-startAgentflow",
+      "target": "agent_extract",
+      "targetHandle": "agent_extract-input",
+      "type": "buttonedge",
+      "id": "edge_start_to_extract"
+    },
+    {
+      "source": "agent_extract",
+      "sourceHandle": "agent_extract-output-agentAgentflow",
+      "target": "agent_validate",
+      "targetHandle": "agent_validate-input",
+      "type": "buttonedge",
+      "id": "edge_extract_to_validate"
+    },
+    {
+      "source": "agent_validate",
+      "sourceHandle": "agent_validate-output-agentAgentflow",
+      "target": "agent_enrich",
+      "targetHandle": "agent_enrich-input",
+      "type": "buttonedge",
+      "id": "edge_validate_to_enrich"
+    },
+    {
+      "source": "agent_enrich",
+      "sourceHandle": "agent_enrich-output-agentAgentflow",
+      "target": "humanInput_approval",
+      "targetHandle": "humanInput_approval-input",
+      "type": "buttonedge",
+      "id": "edge_enrich_to_hil"
+    },
+    {
+      "source": "humanInput_approval",
+      "sourceHandle": "humanInput_approval-output-humanInputAgentflow",
+      "target": "agent_process",
+      "targetHandle": "agent_process-input",
+      "type": "buttonedge",
+      "id": "edge_hil_to_process"
+    },
+    {
+      "source": "agent_process",
+      "sourceHandle": "agent_process-output-agentAgentflow",
+      "target": "agent_report",
+      "targetHandle": "agent_report-input",
+      "type": "buttonedge",
+      "id": "edge_process_to_report"
+    },
+    {
+      "source": "agent_report",
+      "sourceHandle": "agent_report-output-agentAgentflow",
+      "target": "directReply_final",
+      "targetHandle": "directReply_final-input",
+      "type": "buttonedge",
+      "id": "edge_report_to_reply"
+    }
+  ]
+}

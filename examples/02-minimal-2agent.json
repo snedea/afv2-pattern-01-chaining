@@ -1,0 +1,309 @@
+{
+  "nodes": [
+    {
+      "id": "startAgentflow_0",
+      "type": "agentFlow",
+      "position": { "x": -400, "y": 100 },
+      "data": {
+        "id": "startAgentflow_0",
+        "label": "Start",
+        "version": 1.1,
+        "name": "startAgentflow",
+        "type": "Start",
+        "color": "#7EE787",
+        "hideInput": true,
+        "baseClasses": ["Start"],
+        "category": "Agent Flows",
+        "description": "Starting point of the agentflow",
+        "inputParams": [
+          {
+            "label": "Input Type",
+            "name": "startInputType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Chat Input",
+                "name": "chatInput",
+                "description": "Start the conversation with chat input"
+              }
+            ],
+            "default": "chatInput"
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": { "startInputType": "chatInput" },
+        "outputAnchors": [
+          {
+            "id": "startAgentflow_0-output-startAgentflow",
+            "label": "Start",
+            "name": "startAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "stickyNote_purpose",
+      "type": "stickyNote",
+      "position": { "x": -400, "y": -50 },
+      "data": {
+        "id": "stickyNote_purpose",
+        "label": "Sticky Note",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": ["StickyNote"],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "2-AGENT MINIMAL CHAIN\nUse Case: Editorial approval workflow\nFlow: Start → Draft Content → HIL → Publish → Report\nSimplest chaining pattern with approval gate."
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNote_purpose-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 300,
+      "height": 122
+    },
+    {
+      "id": "agent_draft",
+      "type": "agentFlow",
+      "position": { "x": -100, "y": 100 },
+      "data": {
+        "id": "agent_draft",
+        "label": "Agent.Draft",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "description": "Agent node for drafting content",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Draft",
+          "agentDescription": "You are a content drafting specialist. Create a well-structured blog post draft based on the user's topic and requirements.",
+          "agentSystemPrompt": "You are a content drafting specialist.\n\nTASK: Create a blog post draft based on the user's request.\n\nOUTPUT: A well-structured draft with:\n- Compelling headline\n- Introduction (2-3 paragraphs)\n- Main body (3-5 sections)\n- Conclusion\n- SEO keywords\n\nStore result in Flow State as: draft_content",
+          "agentModel": "claude-sonnet-4-5-20250929",
+          "agentTemperature": 0.3,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "artifacts.draft_content", "value": "{{ draft_content }}" },
+            { "key": "chain.step", "value": "1" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_draft-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "humanInput_approval",
+      "type": "agentFlow",
+      "position": { "x": 200, "y": 100 },
+      "data": {
+        "id": "humanInput_approval",
+        "label": "HIL: Editorial Approval",
+        "version": 1.1,
+        "name": "humanInputAgentflow",
+        "type": "HumanInput",
+        "color": "#FF6B6B",
+        "baseClasses": ["HumanInput"],
+        "category": "Agent Flows",
+        "description": "Human-in-the-Loop approval gate",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "humanInputDescriptionType": "fixed",
+          "humanInputDescription": "📝 Editorial Review Required\n\nDraft Content Summary:\n{{ artifacts.draft_content }}\n\nPlease review the draft and approve for publication.",
+          "humanInputEnableFeedback": true
+        },
+        "outputAnchors": [
+          {
+            "id": "humanInput_approval-output-humanInputAgentflow",
+            "label": "HumanInput",
+            "name": "humanInputAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "agent_publish",
+      "type": "agentFlow",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "id": "agent_publish",
+        "label": "Agent.Publish",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "description": "Agent node for publishing content",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Publish",
+          "agentDescription": "You are a content publishing specialist. Publish approved content to the CMS.",
+          "agentSystemPrompt": "You are a content publishing specialist.\n\nTASK: Publish the approved content.\n\nApproved Draft: {{ artifacts.draft_content }}\n\nSimulate these actions:\n1. Publish to WordPress via API\n2. Set publish date and time\n3. Add SEO tags\n4. Generate public URL\n\nOUTPUT: Publication confirmation with URL and metadata.\n\nStore result in Flow State as: publication_result",
+          "agentModel": "claude-3-haiku-20240307",
+          "agentTemperature": 0.2,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "artifacts.publication_result", "value": "{{ publication_result }}" },
+            { "key": "chain.step", "value": "2" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_publish-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "agent_report",
+      "type": "agentFlow",
+      "position": { "x": 800, "y": 100 },
+      "data": {
+        "id": "agent_report",
+        "label": "Agent.Report",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#66BB6A",
+        "baseClasses": ["Agent"],
+        "category": "Agent Flows",
+        "description": "Report generation agent",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "agentName": "Agent.Report",
+          "agentDescription": "Generate publication report",
+          "agentSystemPrompt": "Generate a publication report.\n\nDraft: {{ artifacts.draft_content }}\nPublication: {{ artifacts.publication_result }}\n\nCreate a summary report with:\n- Publication URL\n- Publish timestamp\n- Editorial approval record\n- SEO metrics\n\nStore as: report.generated=true, report.timestamp",
+          "agentModel": "claude-3-haiku-20240307",
+          "agentTemperature": 0.1,
+          "agentEnableMemory": true,
+          "agentStateUpdates": [
+            { "key": "report.generated", "value": "true" },
+            { "key": "report.timestamp", "value": "{{ currentDateTime }}" }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "agent_report-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "directReply_final",
+      "type": "agentFlow",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "id": "directReply_final",
+        "label": "Direct Reply",
+        "version": 1,
+        "name": "directReplyAgentflow",
+        "type": "DirectReply",
+        "color": "#FFD700",
+        "baseClasses": ["DirectReply"],
+        "category": "Agent Flows",
+        "description": "Direct reply to user",
+        "inputParams": [],
+        "inputAnchors": [],
+        "inputs": {
+          "directReplyMessage": "✅ Content Published Successfully\n\nPublication report generated. Content is now live!",
+          "hideOutput": true
+        },
+        "outputAnchors": [],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    }
+  ],
+  "edges": [
+    {
+      "source": "startAgentflow_0",
+      "sourceHandle": "startAgentflow_0-output-startAgentflow",
+      "target": "agent_draft",
+      "targetHandle": "agent_draft-input",
+      "type": "buttonedge",
+      "id": "edge_start_to_draft"
+    },
+    {
+      "source": "agent_draft",
+      "sourceHandle": "agent_draft-output-agentAgentflow",
+      "target": "humanInput_approval",
+      "targetHandle": "humanInput_approval-input",
+      "type": "buttonedge",
+      "id": "edge_draft_to_hil"
+    },
+    {
+      "source": "humanInput_approval",
+      "sourceHandle": "humanInput_approval-output-humanInputAgentflow",
+      "target": "agent_publish",
+      "targetHandle": "agent_publish-input",
+      "type": "buttonedge",
+      "id": "edge_hil_to_publish"
+    },
+    {
+      "source": "agent_publish",
+      "sourceHandle": "agent_publish-output-agentAgentflow",
+      "target": "agent_report",
+      "targetHandle": "agent_report-input",
+      "type": "buttonedge",
+      "id": "edge_publish_to_report"
+    },
+    {
+      "source": "agent_report",
+      "sourceHandle": "agent_report-output-agentAgentflow",
+      "target": "directReply_final",
+      "targetHandle": "directReply_final-input",
+      "type": "buttonedge",
+      "id": "edge_report_to_reply"
+    }
+  ]
+}

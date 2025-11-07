@@ -1,0 +1,87 @@
+{
+  "nodes": [
+    {
+      "id": "startAgentflow_0",
+      "type": "agentFlow",
+      "position": { "x": -800, "y": 300 },
+      "data": {
+        "id": "startAgentflow_0",
+        "label": "Start",
+        "version": 1.1,
+        "name": "startAgentflow",
+        "type": "Start",
+        "color": "#7EE787",
+        "hideInput": true,
+        "baseClasses": ["Start"],
+        "category": "Agent Flows",
+        "inputParams": [
+          {
+            "label": "Input Type",
+            "name": "startInputType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Chat Input",
+                "name": "chatInput",
+                "description": "Customer onboarding data input"
+              }
+            ],
+            "default": "chatInput"
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": { "startInputType": "chatInput" },
+        "outputAnchors": [
+          {
+            "id": "startAgentflow_0-output-startAgentflow",
+            "label": "Start",
+            "name": "startAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 116,
+      "height": 68
+    },
+    {
+      "id": "stickyNote_purpose",
+      "type": "stickyNote",
+      "position": { "x": -800, "y": 150 },
+      "data": {
+        "id": "stickyNote_purpose",
+        "label": "Sticky Note",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": ["StickyNote"],
+        "category": "Agent Flows",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "7-AGENT CUSTOMER ONBOARDING\nUse Case: Financial services customer onboarding\nFlow: Identity → Risk → HIL → Account → Email → Verify → Audit → Report\nDemonstrates complex multi-stage onboarding with compliance."
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNote_purpose-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {}
+      },
+      "width": 300,
+      "height": 122
+    }
+  ],
+  "edges": []
+}

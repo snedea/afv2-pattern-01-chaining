@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowise Flow Diagram Exporter</title>
+    <style>
+        /* Flowise Official Color Palette */
+        :root {
+            /* Light Mode - From Flowise SCSS */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-canvas: #fafafa;
+            --text-primary: #212121;
+            --text-secondary: #616161;
+            --border-color: #e0e0e0;
+            --grid-color: #aaa;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 2px 14px 0 rgb(32 40 45 / 8%);
+            --edge-start: #ae53ba;
+            --edge-end: #2a8af6;
+            --primary-main: #2196f3;
+            --secondary-main: #673ab7;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode - From Flowise SCSS */
+            --bg-primary: #191b1f;
+            --bg-secondary: #242424;
+            --bg-canvas: #252525;
+            --text-primary: #d7dcec;
+            --text-secondary: #8492c4;
+            --border-color: #404040;
+            --grid-color: #333333;
+            --shadow-sm: 0 0 2px 1px rgba(255, 255, 255, 0.1);
+            --shadow-md: 0 2px 14px 0 rgba(0, 0, 0, 0.5);
+            --edge-start: #ae53ba;
+            --edge-end: #2a8af6;
+            --primary-main: #2196f3;
+            --secondary-main: #7c4dff;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        #controls {
+            background: var(--bg-primary);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin: 0 0 20px 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        button:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        #themeToggle {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        #themeToggle:hover {
+            background: var(--bg-canvas);
+            transform: translateY(-1px);
+        }
+
+        input[type="file"] {
+            padding: 8px 12px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        input[type="file"]:hover {
+            border-color: #3b82f6;
+            background: var(--bg-canvas);
+        }
+
+        #canvas-container {
+            background: var(--bg-canvas);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+        }
+
+        #status {
+            margin-top: 16px;
+            font-size: 14px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        [data-theme="dark"] .success {
+            background: #064e3b;
+            color: #6ee7b7;
+            border: 1px solid #047857;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        [data-theme="dark"] .error {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border: 1px solid #991b1b;
+        }
+
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+
+        [data-theme="dark"] .info {
+            background: #1e3a8a;
+            color: #93c5fd;
+            border: 1px solid #1e40af;
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div id="controls">
+        <h2>Flowise Flow Diagram Exporter</h2>
+        <p>Load a Flowise JSON workflow and export it as a high-resolution PNG diagram.</p>
+        <div class="button-group">
+            <input type="file" id="jsonFile" accept=".json" />
+            <button id="exportBtn" onclick="exportToPNG()" disabled>📥 Export to PNG</button>
+            <button id="themeToggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
+        </div>
+        <div id="status" class="info">Please select a JSON file...</div>
+    </div>
+    <div id="canvas-container">
+        <canvas id="flowCanvas"></canvas>
+    </div>
+
+    <script>
+        let workflowData = null;
+        let currentTheme = 'light';
+        const canvas = document.getElementById('flowCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('jsonFile');
+        const exportBtn = document.getElementById('exportBtn');
+
+        // Initialize theme from localStorage
+        const savedTheme = localStorage.getItem('flowiseExporterTheme') || 'light';
+        setTheme(savedTheme);
+
+        function toggleTheme() {
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('flowiseExporterTheme', theme);
+
+            // Redraw workflow with new theme
+            if (workflowData) {
+                drawWorkflow();
+            }
+        }
+
+        // Get theme-aware colors (Flowise official palette)
+        function getThemeColors() {
+            const isDark = currentTheme === 'dark';
+            return {
+                background: isDark ? '#252525' : '#fafafa',
+                gridColor: isDark ? '#333333' : '#aaa',
+                edgeStartColor: '#ae53ba',  // Purple - Flowise official
+                edgeEndColor: '#2a8af6',    // Blue - Flowise official
+                edgeStrokeWidth: 2,
+                edgeOpacity: 0.75,
+                textColor: isDark ? '#d7dcec' : '#212121',
+                textSecondary: isDark ? '#8492c4' : '#616161',
+                shadowColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgb(32 40 45 / 8%)',
+                primaryColor: '#2196f3',
+                secondaryColor: isDark ? '#7c4dff' : '#673ab7'
+            };
+        }
+
+        // File input handler
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    workflowData = JSON.parse(event.target.result);
+                    setStatus(`✅ Loaded: ${workflowData.nodes.length} nodes, ${workflowData.edges.length} edges`, 'success');
+                    drawWorkflow();
+                    exportBtn.disabled = false;
+                } catch (error) {
+                    setStatus(`❌ Error parsing JSON: ${error.message}`, 'error');
+                    workflowData = null;
+                    exportBtn.disabled = true;
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function setStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = type;
+        }
+
+        function drawWorkflow() {
+            if (!workflowData) return;
+
+            const theme = getThemeColors();
+
+            // Calculate canvas bounds
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            workflowData.nodes.forEach(node => {
+                const x = node.position.x;
+                const y = node.position.y;
+                const width = node.width || 120;
+                const height = node.height || 80;
+
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x + width);
+                maxY = Math.max(maxY, y + height);
+            });
+
+            // Add padding
+            const padding = 100;
+            const canvasWidth = (maxX - minX) + (padding * 2);
+            const canvasHeight = (maxY - minY) + (padding * 2);
+
+            // Set canvas size (3x for ultra high DPI)
+            const scale = 3;
+            canvas.width = canvasWidth * scale;
+            canvas.height = canvasHeight * scale;
+            canvas.style.width = canvasWidth + 'px';
+            canvas.style.height = canvasHeight + 'px';
+
+            // Scale for retina displays
+            ctx.scale(scale, scale);
+
+            // Clear canvas with theme background
+            ctx.fillStyle = theme.background;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw grid dots (Flowise-style)
+            drawGrid(canvasWidth, canvasHeight, theme.gridColor);
+
+            // Offset for centering
+            const offsetX = -minX + padding;
+            const offsetY = -minY + padding;
+
+            // Draw edges first (behind nodes)
+            drawEdges(offsetX, offsetY, theme);
+
+            // Draw nodes
+            drawNodes(offsetX, offsetY, theme);
+        }
+
+        function drawGrid(width, height, gridColor) {
+            // Flowise uses 16px grid gap (from Background component)
+            const gridSize = 16;
+            const dotSize = 1;
+
+            ctx.fillStyle = gridColor;
+            for (let x = 0; x < width; x += gridSize) {
+                for (let y = 0; y < height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function drawEdges(offsetX, offsetY, theme) {
+            const nodePositions = {};
+            workflowData.nodes.forEach(node => {
+                nodePositions[node.id] = {
+                    x: node.position.x + offsetX + (node.width || 120) / 2,
+                    y: node.position.y + offsetY + (node.height || 80) / 2
+                };
+            });
+
+            workflowData.edges.forEach((edge, index) => {
+                const source = nodePositions[edge.source];
+                const target = nodePositions[edge.target];
+
+                if (!source || !target) return;
+
+                // Draw smooth bezier curve with gradient stroke (Flowise style)
+                drawGradientEdge(source.x, source.y, target.x, target.y, theme, index);
+            });
+        }
+
+        function drawGradientEdge(x1, y1, x2, y2, theme, edgeIndex) {
+            // Flowise-style bezier curve calculation
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+
+            // Add tiny offset if coordinates match (Flowise precision hack)
+            const sourceX = x1;
+            const sourceY = y1;
+            const targetX = Math.abs(dx) < 0.001 ? x2 + 0.0001 : x2;
+            const targetY = Math.abs(dy) < 0.001 ? y2 + 0.0001 : y2;
+
+            // Calculate control points for smooth bezier
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const curvature = Math.min(distance * 0.25, 100);
+
+            const cp1x = sourceX + curvature;
+            const cp1y = sourceY;
+            const cp2x = targetX - curvature;
+            const cp2y = targetY;
+
+            // Create gradient from source to target (Flowise purple-blue gradient)
+            const gradient = ctx.createLinearGradient(sourceX, sourceY, targetX, targetY);
+            gradient.addColorStop(0, theme.edgeStartColor);
+            gradient.addColorStop(1, theme.edgeEndColor);
+
+            // Draw bezier curve with gradient stroke
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = theme.edgeStrokeWidth;
+            ctx.globalAlpha = theme.edgeOpacity;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(sourceX, sourceY);
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, targetX, targetY);
+            ctx.stroke();
+
+            // Reset alpha for arrow head
+            ctx.globalAlpha = 1.0;
+
+            // Calculate arrow head angle at the end of curve
+            const angle = Math.atan2(targetY - cp2y, targetX - cp2x);
+            const headlen = 8;
+
+            // Draw arrowhead (filled triangle) with target gradient color
+            ctx.beginPath();
+            ctx.moveTo(targetX, targetY);
+            ctx.lineTo(
+                targetX - headlen * Math.cos(angle - Math.PI / 7),
+                targetY - headlen * Math.sin(angle - Math.PI / 7)
+            );
+            ctx.lineTo(
+                targetX - headlen * Math.cos(angle + Math.PI / 7),
+                targetY - headlen * Math.sin(angle + Math.PI / 7)
+            );
+            ctx.closePath();
+            ctx.fillStyle = theme.edgeEndColor;
+            ctx.fill();
+        }
+
+        function drawNodes(offsetX, offsetY, theme) {
+            workflowData.nodes.forEach(node => {
+                const x = node.position.x + offsetX;
+                const y = node.position.y + offsetY;
+                const width = node.width || 120;
+                const height = node.height || 80;
+
+                // Use color from JSON data, fallback to white
+                const nodeColor = node.data?.color || '#ffffff';
+
+                // Flowise node background styling
+                // Dark mode: darken(nodeColor, 0.8), Light mode: lighten(nodeColor, 0.9)
+                const backgroundColor = currentTheme === 'dark'
+                    ? adjustColorBrightness(nodeColor, -0.8)
+                    : adjustColorBrightness(nodeColor, 0.9);
+
+                // Border with alpha transparency (Flowise style)
+                const borderColor = hexToRgba(nodeColor, 0.5);
+
+                // Draw shadow (Flowise: 0 2px 14px 0 rgb(32 40 45 / 8%))
+                ctx.shadowColor = theme.shadowColor;
+                ctx.shadowBlur = 14;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 2;
+
+                // Draw node background (no gradient, solid color like Flowise)
+                ctx.fillStyle = backgroundColor;
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 1;  // Flowise uses 1px borders
+
+                roundRect(ctx, x, y, width, height, 10);
+                ctx.fill();
+
+                // Reset shadow for border
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.stroke();
+
+                // Draw node label
+                const textColor = getContrastColor(nodeColor);
+                ctx.fillStyle = textColor;
+                ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const label = node.data?.label || node.data?.name || node.id;
+                const maxWidth = width - 20;
+
+                // Wrap text if needed
+                const lines = wrapText(label, maxWidth, ctx);
+
+                const lineHeight = 18;
+                const startY = y + height/2 - (lines.length - 1) * lineHeight / 2;
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, x + width/2, startY + i * lineHeight);
+                });
+            });
+        }
+
+        // Flowise color adjustment (lighten/darken with factor)
+        function adjustColorBrightness(hex, factor) {
+            hex = hex.replace('#', '');
+            let r = parseInt(hex.substring(0, 2), 16);
+            let g = parseInt(hex.substring(2, 4), 16);
+            let b = parseInt(hex.substring(4, 6), 16);
+
+            if (factor > 0) {
+                // Lighten
+                r = Math.min(255, r + (255 - r) * factor);
+                g = Math.min(255, g + (255 - g) * factor);
+                b = Math.min(255, b + (255 - b) * factor);
+            } else {
+                // Darken
+                const darkFactor = 1 + factor;
+                r = Math.max(0, r * darkFactor);
+                g = Math.max(0, g * darkFactor);
+                b = Math.max(0, b * darkFactor);
+            }
+
+            const toHex = (n) => {
+                const hex = Math.round(n).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+
+            return '#' + toHex(r) + toHex(g) + toHex(b);
+        }
+
+        // Convert hex to rgba with alpha
+        function hexToRgba(hex, alpha) {
+            hex = hex.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function wrapText(text, maxWidth, context) {
+            const words = text.split(/\s+/);
+            const lines = [];
+            let currentLine = words[0] || '';
+
+            for (let i = 1; i < words.length; i++) {
+                const testLine = currentLine + ' ' + words[i];
+                const metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && currentLine !== '') {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+            return lines;
+        }
+
+        function getContrastColor(hex) {
+            // Remove # if present
+            hex = hex.replace('#', '');
+
+            // Convert to RGB
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+
+            // Calculate luminance
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+            // Return black or white based on luminance
+            return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function exportToPNG() {
+            if (!workflowData) {
+                setStatus('❌ Please load a JSON file first', 'error');
+                return;
+            }
+
+            setStatus('📸 Generating PNG...', 'info');
+
+            setTimeout(() => {
+                try {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = '01-chaining-flow.png';
+                    link.href = dataUrl;
+                    link.click();
+
+                    setStatus('✅ PNG exported successfully! Check your downloads folder.', 'success');
+                } catch (error) {
+                    setStatus(`❌ Error exporting PNG: ${error.message}`, 'error');
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>

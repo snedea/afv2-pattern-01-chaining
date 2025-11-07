@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Pattern:** Sequential 3-agent chain with Human-in-the-Loop (HIL) approval gate
+**Pattern:** Sequential 4-agent chaining pipeline with Human-in-the-Loop (HIL) approval gate
 **Flow:** Start → Chain1 → HIL Gate → Chain2 → Chain3 → Report → Direct Reply
 **Repository:** https://github.com/snedea/afv2-pattern-01-chaining
 
@@ -608,6 +608,314 @@ This pattern has been validated against `validate_workflow.py` with the followin
 - HIL gate positioned before write-capable agent (Chain2)
 - Approval required before Chain2 execution
 - Reject path properly terminates workflow
+
+---
+
+## State Verification Checklist
+
+Use this checklist to verify Flow State is correctly maintained throughout workflow execution.
+
+### Overview
+
+The chaining pattern relies on **state accumulation** - each agent adds new state keys without overwriting previous ones. This creates a complete artifact lineage from start to finish.
+
+### State Verification Points
+
+#### ✅ After Chain1 Execution
+
+**Expected State Keys:**
+```json
+{
+  "artifacts": {
+    "artifact_1": "[Chain1 output data]"
+  },
+  "chain": {
+    "step": "1"
+  }
+}
+```
+
+**Verification Steps:**
+1. Click "View Flow State" in Flowise UI
+2. Confirm `artifacts.artifact_1` exists and contains Chain1's output
+3. Confirm `chain.step` equals `"1"`
+4. Confirm NO other artifact keys exist yet (`artifact_2`, `final_draft` should be absent)
+
+**✅ PASS**: artifact_1 exists, step=1, no artifact_2 or final_draft
+**❌ FAIL**: Missing artifact_1, incorrect step value, or premature artifact_2/final_draft
+
+---
+
+#### ✅ After HIL Gate Approval
+
+**Expected State Keys:**
+```json
+{
+  "artifacts": {
+    "artifact_1": "[Chain1 output - PRESERVED]"
+  },
+  "chain": {
+    "step": "1"
+  }
+}
+```
+
+**Verification Steps:**
+1. After clicking [Approve] in HIL gate
+2. Verify state is **unchanged** (HIL gate doesn't modify state)
+3. Confirm `artifacts.artifact_1` still exists (not overwritten)
+
+**✅ PASS**: artifact_1 preserved, no state changes from approval action
+**❌ FAIL**: artifact_1 missing or modified
+
+---
+
+#### ✅ After Chain2 Execution
+
+**Expected State Keys:**
+```json
+{
+  "artifacts": {
+    "artifact_1": "[Chain1 output - PRESERVED]",
+    "artifact_2": "[Chain2 output data]"
+  },
+  "chain": {
+    "step": "2"
+  }
+}
+```
+
+**Verification Steps:**
+1. Confirm `artifacts.artifact_1` **still exists** (not overwritten)
+2. Confirm `artifacts.artifact_2` **now exists** (newly added)
+3. Confirm `chain.step` incremented to `"2"`
+4. Confirm artifact_2 references or builds upon artifact_1 content
+
+**✅ PASS**: Both artifact_1 and artifact_2 exist, step=2
+**❌ FAIL**: artifact_1 missing (overwritten), artifact_2 missing, or wrong step value
+
+---
+
+#### ✅ After Chain3 Execution
+
+**Expected State Keys:**
+```json
+{
+  "artifacts": {
+    "artifact_1": "[Chain1 output - PRESERVED]",
+    "artifact_2": "[Chain2 output - PRESERVED]",
+    "final_draft": "[Chain3 output data]"
+  },
+  "chain": {
+    "step": "3"
+  },
+  "output": "[Chain3 final output]"
+}
+```
+
+**Verification Steps:**
+1. Confirm `artifacts.artifact_1` **still exists** (complete preservation)
+2. Confirm `artifacts.artifact_2` **still exists** (complete preservation)
+3. Confirm `artifacts.final_draft` **now exists** (newly added)
+4. Confirm `output` key exists with Chain3's final output
+5. Confirm `chain.step` incremented to `"3"`
+
+**✅ PASS**: All 3 artifacts exist (artifact_1, artifact_2, final_draft), step=3
+**❌ FAIL**: Any artifact missing, wrong step value, or missing output key
+
+---
+
+#### ✅ After Report Execution
+
+**Expected State Keys:**
+```json
+{
+  "artifacts": {
+    "artifact_1": "[Chain1 output - PRESERVED]",
+    "artifact_2": "[Chain2 output - PRESERVED]",
+    "final_draft": "[Chain3 output - PRESERVED]"
+  },
+  "chain": {
+    "step": "3"
+  },
+  "output": "[Chain3 final output]",
+  "report": {
+    "generated": "true",
+    "timestamp": "2025-11-07T10:30:00Z"
+  }
+}
+```
+
+**Verification Steps:**
+1. Confirm ALL previous artifacts **still exist** (complete lineage preserved)
+2. Confirm `report.generated` equals `"true"`
+3. Confirm `report.timestamp` contains valid ISO 8601 timestamp
+4. Confirm Report agent accessed all artifacts (check report content references them)
+
+**✅ PASS**: All artifacts preserved, report keys exist with valid values
+**❌ FAIL**: Any artifact missing, report.generated not true, or invalid timestamp
+
+---
+
+### State Preservation Principles
+
+**✅ DO:**
+- Add new state keys at each agent
+- Increment `chain.step` sequentially (1 → 2 → 3)
+- Reference previous artifacts in prompts using `{{ artifacts.artifact_N }}`
+- Preserve all previous state when adding new keys
+
+**❌ DON'T:**
+- Overwrite existing state keys
+- Skip step numbers (1 → 3, skipping 2)
+- Clear state between agents
+- Re-use state key names (e.g., don't set `artifacts.artifact_2` twice)
+
+---
+
+### Debugging State Issues
+
+#### Issue: "State key missing after agent execution"
+
+**Diagnosis:**
+1. Check agent's `agentStateUpdates` configuration
+2. Verify key name matches exactly (case-sensitive)
+3. Confirm agent has `agentEnableMemory: true`
+
+**Fix:**
+```json
+// In agent configuration
+{
+  "agentEnableMemory": true,
+  "agentStateUpdates": [
+    { "key": "artifacts.artifact_1", "value": "{{ artifact_1 }}" },
+    { "key": "chain.step", "value": "1" }
+  ]
+}
+```
+
+---
+
+#### Issue: "Previous artifact overwritten"
+
+**Diagnosis:**
+1. Check if agent uses same key name as previous agent
+2. Verify state update doesn't use wildcard or root keys
+
+**Wrong** ❌:
+```json
+{
+  "key": "artifacts",  // Overwrites entire artifacts object!
+  "value": "{{ new_artifact }}"
+}
+```
+
+**Correct** ✅:
+```json
+{
+  "key": "artifacts.artifact_2",  // Adds to artifacts, doesn't overwrite
+  "value": "{{ artifact_2 }}"
+}
+```
+
+---
+
+#### Issue: "Chain.step not incrementing"
+
+**Diagnosis:**
+1. Check each agent updates `chain.step` with correct value
+2. Verify value is string (e.g., `"1"` not `1`)
+
+**Configuration:**
+```json
+// Chain1
+{ "key": "chain.step", "value": "1" }
+
+// Chain2
+{ "key": "chain.step", "value": "2" }
+
+// Chain3
+{ "key": "chain.step", "value": "3" }
+```
+
+---
+
+### Automated State Verification Script
+
+For advanced users, use this script to validate state progression:
+
+```javascript
+// validate-state.js
+const expectedStateProgression = [
+  {
+    after: "Chain1",
+    required: ["artifacts.artifact_1", "chain.step"],
+    forbidden: ["artifacts.artifact_2", "artifacts.final_draft"],
+    values: { "chain.step": "1" }
+  },
+  {
+    after: "Chain2",
+    required: ["artifacts.artifact_1", "artifacts.artifact_2", "chain.step"],
+    forbidden: ["artifacts.final_draft"],
+    values: { "chain.step": "2" }
+  },
+  {
+    after: "Chain3",
+    required: ["artifacts.artifact_1", "artifacts.artifact_2", "artifacts.final_draft", "chain.step", "output"],
+    forbidden: [],
+    values: { "chain.step": "3" }
+  },
+  {
+    after: "Report",
+    required: ["artifacts.artifact_1", "artifacts.artifact_2", "artifacts.final_draft", "chain.step", "output", "report.generated", "report.timestamp"],
+    forbidden: [],
+    values: { "chain.step": "3", "report.generated": "true" }
+  }
+];
+
+function validateState(currentState, expectedAfter) {
+  const expected = expectedStateProgression.find(e => e.after === expectedAfter);
+
+  // Check required keys exist
+  for (const key of expected.required) {
+    if (!getNestedKey(currentState, key)) {
+      console.error(`❌ Missing required key: ${key}`);
+      return false;
+    }
+  }
+
+  // Check forbidden keys don't exist
+  for (const key of expected.forbidden) {
+    if (getNestedKey(currentState, key)) {
+      console.error(`❌ Forbidden key exists: ${key}`);
+      return false;
+    }
+  }
+
+  // Check specific values
+  for (const [key, expectedValue] of Object.entries(expected.values)) {
+    const actualValue = getNestedKey(currentState, key);
+    if (actualValue !== expectedValue) {
+      console.error(`❌ Wrong value for ${key}: expected "${expectedValue}", got "${actualValue}"`);
+      return false;
+    }
+  }
+
+  console.log(`✅ State valid after ${expectedAfter}`);
+  return true;
+}
+
+function getNestedKey(obj, path) {
+  return path.split('.').reduce((current, part) => current?.[part], obj);
+}
+
+// Usage in Flowise:
+// After each agent execution, call:
+// validateState($flow.state, "Chain1");
+// validateState($flow.state, "Chain2");
+// validateState($flow.state, "Chain3");
+// validateState($flow.state, "Report");
+```
 
 ---
 

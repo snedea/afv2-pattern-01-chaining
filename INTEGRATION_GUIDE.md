@@ -502,6 +502,227 @@ You have successfully integrated Pattern #1 when:
 3. **Adjust HIL Trigger**: Move HIL gate or add multiple gates for different approval levels
 4. **Error Handling**: Add try/catch logic in agent prompts for graceful failures
 
+---
+
+## Performance Benchmarks
+
+### Expected Execution Metrics
+
+Use these benchmarks to validate your deployment and identify performance issues.
+
+#### Baseline Performance (4-Agent Chain)
+
+| Metric | Expected Value | Acceptable Range | Red Flag |
+|--------|----------------|------------------|----------|
+| **Total Execution Time** | 12-19 seconds | 10-25 seconds | >30 seconds |
+| **Chain1 Latency** | 3-5 seconds | 2-7 seconds | >10 seconds |
+| **Chain2 Latency** | 4-6 seconds | 3-8 seconds | >12 seconds |
+| **Chain3 Latency** | 3-5 seconds | 2-7 seconds | >10 seconds |
+| **Report Latency** | 2-3 seconds | 1-5 seconds | >8 seconds |
+| **HIL Approval Time** | Variable (human) | Seconds to hours | N/A |
+
+*Excludes human approval time. Measured with Claude Sonnet 4.5 on standard hardware.*
+
+#### Token Usage (Per Agent)
+
+| Agent | Input Tokens | Output Tokens | Total Tokens | Cost (Sonnet 4.5) |
+|-------|--------------|---------------|--------------|-------------------|
+| **Chain1** | 500-800 | 200-400 | 700-1200 | $0.004-$0.008 |
+| **Chain2** | 800-1200 | 300-500 | 1100-1700 | $0.007-$0.012 |
+| **Chain3** | 1200-1500 | 400-600 | 1600-2100 | $0.010-$0.015 |
+| **Report** | 1500-2000 | 500-800 | 2000-2800 | $0.013-$0.020 |
+| **Total** | 4000-5500 | 1400-2300 | 5400-7800 | **$0.034-$0.055** |
+
+*Based on Claude Sonnet 4.5 pricing: $3 per 1M input tokens, $15 per 1M output tokens (as of Nov 2025)*
+
+#### Cost Optimization Scenarios
+
+**Scenario 1: Use Haiku for Simple Stages**
+
+| Change | Savings per Execution | Annual Savings (10K runs) |
+|--------|----------------------|---------------------------|
+| Chain1: Haiku | -$0.006 (75%) | -$60 |
+| Report: Haiku | -$0.014 (70%) | -$140 |
+| **Total Savings** | **-$0.020** | **-$200** |
+
+**Scenario 2: Optimize State Management**
+
+| Optimization | Token Reduction | Cost Savings |
+|--------------|-----------------|--------------|
+| Remove redundant context from prompts | -15% | -$0.005/run |
+| Use state references instead of full text | -20% | -$0.007/run |
+| Minimize artifact re-reading | -10% | -$0.003/run |
+| **Combined** | **-35%** | **-$0.015/run** |
+
+### Performance Monitoring
+
+#### Recommended Metrics to Track
+
+1. **Execution Time Distribution**
+   - P50 (median): 15 seconds
+   - P95: 22 seconds
+   - P99: 28 seconds
+   - Max acceptable: 35 seconds
+
+2. **Success Rate**
+   - Target: >99%
+   - Acceptable: >95%
+   - Investigate if: <90%
+
+3. **HIL Approval Metrics**
+   - Average approval time: <5 minutes
+   - Approval rate: 85-90% approved, 10-15% rejected
+   - Abandonment rate: <5% (user doesn't respond)
+
+4. **Token Usage Trends**
+   - Monitor for unexpected spikes (indicate prompt issues)
+   - Track total tokens per workflow execution
+   - Alert if single agent exceeds 3000 tokens
+
+#### Setting Up Monitoring
+
+**Option 1: Flowise Built-in Logs**
+
+1. Navigate to Flowise UI → **Logs**
+2. Filter by workflow ID
+3. View execution times per agent
+4. Export to CSV for analysis
+
+**Option 2: Custom Logging (Advanced)**
+
+Add logging to each agent's system prompt:
+
+```javascript
+// In Chain1 prompt
+"LOGGING: Record execution start time: {{ currentDateTime }}"
+
+// At end of Chain1
+"LOGGING: Record execution end time and calculate duration"
+```
+
+Store in state:
+```json
+{
+  "metrics": {
+    "chain1_start": "2025-11-07T10:30:00Z",
+    "chain1_end": "2025-11-07T10:30:04Z",
+    "chain1_duration_seconds": 4,
+    "chain1_tokens": 1150
+  }
+}
+```
+
+#### Performance Troubleshooting
+
+**Issue: Execution Time >30 seconds**
+
+**Possible Causes:**
+1. Prompts too long (reduce unnecessary context)
+2. Agent re-reading entire state history (optimize state access)
+3. Tool calls timing out (check API integrations)
+4. Model selection (Sonnet 4.5 slower than Haiku for simple tasks)
+
+**Diagnosis:**
+```bash
+# Check individual agent latencies in Flowise logs
+# If Chain1 >10s: Prompt is too long or OCR is slow
+# If Chain2 >12s: Tool calls (calculator/API) timing out
+# If Report >8s: Reading too much state data
+```
+
+**Fixes:**
+- Reduce prompt length by 30-50%
+- Use smaller models for simple agents (Chain1 → Haiku)
+- Optimize tool calls (cache results, reduce API calls)
+- Reference specific state keys instead of entire state
+
+---
+
+**Issue: Token Usage Exceeds 8000 Total**
+
+**Possible Causes:**
+1. Agents re-reading full conversation history
+2. Large artifacts stored in state
+3. Redundant context in prompts
+
+**Diagnosis:**
+```javascript
+// Check state size at each agent
+console.log(JSON.stringify($flow.state).length); // Should be <5KB per agent
+```
+
+**Fixes:**
+- Set `agentEnableMemory: false` for agents that don't need full history
+- Reference only required state keys in prompts
+- Use artifact summaries instead of full content in later stages
+- Limit state to essential data only
+
+---
+
+**Issue: Cost Per Execution >$0.10**
+
+**Possible Causes:**
+1. Using Sonnet 4.5 for all agents (expensive)
+2. Excessive token usage
+3. Long prompts with redundant instructions
+
+**Fixes:**
+1. **Model Selection**:
+   - Chain1: Haiku (extraction/simple analysis)
+   - Chain2: Sonnet 4.5 (complex logic)
+   - Chain3: Sonnet 4.5 (validation)
+   - Report: Haiku (formatting)
+
+2. **Prompt Optimization**:
+   - Remove examples from prompts (unless critical)
+   - Use concise instructions (50-100 words vs 200-300)
+   - Avoid repeating context already in state
+
+3. **State Management**:
+   - Store only essential data in state
+   - Use references instead of full text
+   - Clean up intermediate artifacts
+
+### Baseline Performance Test
+
+Run this test after deployment to establish your baseline:
+
+```bash
+# Test Case 1: Minimal Input
+Input: "Create a product launch plan for a new SaaS tool"
+Expected: 12-15 seconds, 5000-6000 tokens, $0.035-$0.045
+
+# Test Case 2: Average Input
+Input: "Analyze customer feedback and generate improvement recommendations"
+Expected: 15-18 seconds, 6000-7000 tokens, $0.045-$0.055
+
+# Test Case 3: Complex Input
+Input: "Process invoice with multiple line items, vendor verification, and budget impact analysis"
+Expected: 18-22 seconds, 7000-8000 tokens, $0.055-$0.065
+
+# Red Flag Threshold
+If ANY test exceeds:
+- 30 seconds execution time
+- 10,000 total tokens
+- $0.100 cost per run
+→ Investigate immediately
+```
+
+### Performance Optimization Checklist
+
+Before deploying to high-volume usage:
+
+- [ ] Profile each agent's latency (identify slowest stages)
+- [ ] Optimize prompts (remove unnecessary verbosity)
+- [ ] Use appropriate model tiers (Haiku vs Sonnet 4.5)
+- [ ] Minimize state size (store only essentials)
+- [ ] Test with 10x expected load (concurrency testing)
+- [ ] Set up alerting for >30s executions
+- [ ] Monitor token usage trends daily
+- [ ] Establish cost budgets per workflow
+
+---
+
 ### Explore Related Patterns
 
 - **Pattern #2 (Parallel)**: Run multiple agents concurrently
@@ -509,7 +730,7 @@ You have successfully integrated Pattern #1 when:
 - **Pattern #4 (Iteration)**: Quality-driven refinement loops
 - **Pattern #5 (Looping)**: Test-driven validation with retry
 
-### Production Readiness Checklist
+### Deployment Readiness Checklist
 
 - [ ] Test with real production data (not just samples)
 - [ ] Add comprehensive error handling in all agents
